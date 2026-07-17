@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import asdict, dataclass
@@ -32,7 +33,7 @@ class AppState:
         self.camera_lock = threading.Lock()
         self.latest_score = ScoreSnapshot(0.0, "idle", False, self.analyzer.mode, time.time())
         self.upload_summary: dict | None = None
-        self.inference_stride = 2
+        self.inference_stride = max(1, int(os.getenv("INFERENCE_STRIDE", "2")))
         self._frame_counter = 0
         self._last_result: AnalysisResult | None = None
 
@@ -73,6 +74,55 @@ class AppState:
 
     def score_dict(self) -> dict:
         return asdict(self.latest_score)
+
+    def analyze_video_file(
+        self,
+        video_path: Path,
+        original_filename: str,
+        sample_stride: int = 5,
+    ) -> dict:
+        """Analyze sampled frames from a saved video file."""
+        cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            return {"ok": False, "error": "Could not open uploaded video"}
+
+        frame_scores = []
+        frame_index = 0
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            if frame_index % sample_stride != 0:
+                frame_index += 1
+                continue
+            result = self.analyzer.analyze_frame(frame, smooth=False)
+            frame_scores.append(
+                {
+                    "frame": frame_index,
+                    "fake_probability": result.fake_probability,
+                    "label": result.label,
+                    "face_detected": result.face_detected,
+                }
+            )
+            frame_index += 1
+        cap.release()
+
+        if not frame_scores:
+            return {"ok": False, "error": "No frames processed"}
+
+        avg_score = sum(item["fake_probability"] for item in frame_scores) / len(frame_scores)
+        manipulated = sum(1 for item in frame_scores if item["label"] == "likely_manipulated")
+        summary = {
+            "ok": True,
+            "filename": original_filename,
+            "frames_analyzed": len(frame_scores),
+            "average_fake_probability": round(avg_score, 3),
+            "manipulated_frame_ratio": round(manipulated / len(frame_scores), 3),
+            "mode": self.analyzer.mode,
+            "samples": frame_scores[:20],
+        }
+        self.upload_summary = summary
+        return summary
 
 
 state = AppState()

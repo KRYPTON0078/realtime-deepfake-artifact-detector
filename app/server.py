@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -22,4 +23,7 @@ def create_app() -> Flask:
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    host = os.getenv("APP_HOST", "0.0.0.0")
+    port = int(os.getenv("APP_PORT", "5000"))
+    debug = os.getenv("APP_DEBUG", "0") == "1"
+    app.run(host=host, port=port, debug=debug, threaded=True)
