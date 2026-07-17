@@ -53,6 +53,24 @@ header h1 {
   object-fit: contain;
 }
 
+#device-camera-preview {
+  width: 100%;
+  border-radius: 8px;
+  background: #000;
+  min-height: 240px;
+  object-fit: cover;
+  margin-top: 8px;
+}
+
+#device-camera-canvas {
+  display: none;
+}
+
+#device-camera-status {
+  margin-top: 8px;
+  color: #cbd5e1;
+}
+
 .score-card {
   margin-top: 12px;
 }
