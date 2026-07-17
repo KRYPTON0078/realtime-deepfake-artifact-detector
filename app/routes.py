@@ -22,11 +22,38 @@ UPLOAD_WORKERS = max(1, int(os.getenv("UPLOAD_ANALYSIS_WORKERS", "2")))
 upload_executor = ThreadPoolExecutor(max_workers=UPLOAD_WORKERS)
 upload_jobs: dict[str, dict] = {}
 upload_jobs_lock = threading.Lock()
+UPLOAD_JOB_RETENTION_SECONDS = max(60, int(os.getenv("UPLOAD_JOB_RETENTION_SECONDS", "1800")))
+MAX_UPLOAD_JOBS = max(10, int(os.getenv("MAX_UPLOAD_JOBS", "200")))
+FRAME_MAX_DIM = max(160, int(os.getenv("FRAME_MAX_DIM", "640")))
 
 DISCLAIMER = (
     "Detector trained for face-swap artifact patterns; "
     "not validated against all modern generative video models."
 )
+
+
+def _prune_upload_jobs(now: float | None = None) -> None:
+    if now is None:
+        now = time.time()
+    to_delete = []
+    for job_id, job in upload_jobs.items():
+        status = job.get("status")
+        finished_at = job.get("finished_at")
+        if status in {"done", "failed"} and finished_at:
+            if now - float(finished_at) > UPLOAD_JOB_RETENTION_SECONDS:
+                to_delete.append(job_id)
+    for job_id in to_delete:
+        upload_jobs.pop(job_id, None)
+
+    # Hard cap to avoid unbounded memory growth from queued/running metadata.
+    if len(upload_jobs) > MAX_UPLOAD_JOBS:
+        oldest = sorted(
+            upload_jobs.items(),
+            key=lambda item: float(item[1].get("created_at", now)),
+        )
+        overflow = len(upload_jobs) - MAX_UPLOAD_JOBS
+        for job_id, _ in oldest[:overflow]:
+            upload_jobs.pop(job_id, None)
 
 
 @bp.get("/")
@@ -50,6 +77,9 @@ def api_config():
         {
             "inference_stride": state.inference_stride,
             "upload_workers": UPLOAD_WORKERS,
+            "upload_job_retention_seconds": UPLOAD_JOB_RETENTION_SECONDS,
+            "max_upload_jobs": MAX_UPLOAD_JOBS,
+            "frame_max_dim": FRAME_MAX_DIM,
             "mode": state.analyzer.mode,
         }
     )
@@ -62,6 +92,7 @@ def health():
 
 @bp.post("/analyze/frame")
 def analyze_frame():
+    start = time.perf_counter()
     payload = request.get_json(silent=True) or {}
     image_base64 = payload.get("image_base64")
     if not image_base64:
@@ -80,6 +111,11 @@ def analyze_frame():
     frame = cv2.imdecode(np_bytes, cv2.IMREAD_COLOR)
     if frame is None:
         return jsonify({"ok": False, "error": "Could not decode image"}), 400
+    h, w = frame.shape[:2]
+    longest = max(h, w)
+    if longest > FRAME_MAX_DIM:
+        scale = FRAME_MAX_DIM / float(longest)
+        frame = cv2.resize(frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
     result = state.analyze_and_store(frame, smooth=True)
     response = {
@@ -89,6 +125,7 @@ def analyze_frame():
         "face_detected": result.face_detected,
         "mode": result.mode,
         "timestamp": time.time(),
+        "processing_ms": round((time.perf_counter() - start) * 1000, 2),
     }
     return jsonify(response)
 
@@ -143,6 +180,7 @@ def analyze_upload():
     sample_stride = max(1, int(request.form.get("sample_stride", 5)))
     job_id = uuid.uuid4().hex
     with upload_jobs_lock:
+        _prune_upload_jobs()
         upload_jobs[job_id] = {
             "id": job_id,
             "status": "queued",
@@ -187,7 +225,35 @@ def analyze_upload():
 @bp.get("/analyze/upload/<job_id>")
 def analyze_upload_status(job_id: str):
     with upload_jobs_lock:
+        _prune_upload_jobs()
         job = upload_jobs.get(job_id)
     if job is None:
         return jsonify({"ok": False, "error": "Job not found"}), 404
     return jsonify(job)
+
+
+@bp.get("/analyze/upload/jobs")
+def analyze_upload_jobs():
+    include_results = request.args.get("include_results", "0") == "1"
+    with upload_jobs_lock:
+        _prune_upload_jobs()
+        jobs = sorted(
+            upload_jobs.values(),
+            key=lambda item: float(item.get("created_at", 0.0)),
+            reverse=True,
+        )
+        if not include_results:
+            jobs = [
+                {k: v for k, v in job.items() if k != "result"}
+                for job in jobs
+            ]
+    return jsonify({"ok": True, "count": len(jobs), "jobs": jobs})
+
+
+@bp.delete("/analyze/upload/<job_id>")
+def analyze_upload_delete(job_id: str):
+    with upload_jobs_lock:
+        removed = upload_jobs.pop(job_id, None)
+    if removed is None:
+        return jsonify({"ok": False, "error": "Job not found"}), 404
+    return jsonify({"ok": True, "deleted": job_id})
