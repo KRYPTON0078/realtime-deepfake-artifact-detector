@@ -39,6 +39,7 @@
       <video id="device-camera-preview" playsinline autoplay muted></video>
       <canvas id="device-camera-canvas" width="320" height="240"></canvas>
       <div id="device-camera-status">Idle</div>
+      <div id="device-camera-latency">Last frame latency: - ms</div>
     </section>
 
     <section class="panel">
@@ -91,10 +92,16 @@
           body: JSON.stringify({ image_base64: dataUrl }),
         });
         const data = await response.json();
+        if (response.status === 429) {
+          setDeviceStatus("Analyzer busy, retrying...");
+          return;
+        }
         if (!response.ok || !data.ok) {
           throw new Error(data.error || "Frame analysis failed");
         }
         updateScoreCard(data);
+        document.getElementById("device-camera-latency").textContent =
+          "Last frame latency: " + Number(data.processing_ms || 0).toFixed(1) + " ms";
         setDeviceStatus("Analyzing...");
       } catch (error) {
         setDeviceStatus("Error: " + (error.message || String(error)));

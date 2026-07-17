@@ -10,6 +10,7 @@ A Flask demo app that analyzes webcam and uploaded video feeds for **face-swap s
 - Device-camera frame analysis endpoint for mobile/WebView live scoring
 - Uploaded video analysis with sampled-frame scoring
 - Upload job queue listing and retention cleanup controls
+- Frame-analysis concurrency guard to avoid overload on mobile polling
 - PyTorch MobileNetV2 binary classifier (`real` vs `fake_face_swap`)
 - Heuristic fallback mode when no trained checkpoint is available
 - Temporal smoothing to reduce score flicker
