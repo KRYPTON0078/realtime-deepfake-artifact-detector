@@ -1,0 +1,1 @@
+"""Deepfake artifact detection package."""

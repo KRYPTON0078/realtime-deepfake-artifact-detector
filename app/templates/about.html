@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - Deepfake Artifact Detector</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>About This Detector</h1>
+    <p class="disclaimer">{{ disclaimer }}</p>
+  </header>
+
+  <main class="content">
+    <section>
+      <h2>Scope</h2>
+      <p>
+        This demo detects spatial and blending artifacts common in classic face-swap pipelines.
+        It is designed for educational and research demonstration, not as a universal deepfake detector.
+      </p>
+    </section>
+
+    <section>
+      <h2>Attack Class</h2>
+      <ul>
+        <li>Face-swap style manipulations</li>
+        <li>Blending boundary artifacts</li>
+        <li>Over-smoothing and compression artifacts</li>
+        <li>Color inconsistency around facial regions</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Known Limitations</h2>
+      <ul>
+        <li>Accuracy drops on newer diffusion-based and high-quality generative models</li>
+        <li>Performance depends on face detection quality and lighting</li>
+        <li>Heuristic mode is used until a trained checkpoint is available</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Ethical Use</h2>
+      <p>
+        Use this tool to study manipulated media awareness and content verification workflows.
+        Do not use probabilistic scores as legal evidence without expert review.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <a href="{{ url_for('main.index') }}">Back to dashboard</a>
+  </footer>
+</body>
+</html>

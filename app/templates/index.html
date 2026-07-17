@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deepfake Artifact Detector</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Real-Time Deepfake Artifact Detector</h1>
+    <p class="disclaimer">{{ disclaimer }}</p>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <h2>Live Webcam Analysis</h2>
+      <div class="controls">
+        <button id="start-camera">Start Camera</button>
+        <button id="stop-camera">Stop Camera</button>
+      </div>
+      <img id="video-feed" src="{{ url_for('main.video_feed') }}" alt="Live analysis feed">
+      <div class="score-card">
+        <div>Label: <strong id="score-label">idle</strong></div>
+        <div>Fake probability: <strong id="score-value">0.00</strong></div>
+        <div>Mode: <strong id="score-mode">-</strong></div>
+        <div class="meter"><div id="score-bar"></div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Upload Video</h2>
+      <form id="upload-form">
+        <input type="file" id="video-file" name="video" accept="video/*" required>
+        <button type="submit">Analyze Upload</button>
+      </form>
+      <pre id="upload-result">Upload a short clip to analyze sampled frames.</pre>
+    </section>
+  </main>
+
+  <footer>
+    <a href="{{ url_for('main.about') }}">About limitations</a>
+  </footer>
+
+  <script>
+    async function post(url) {
+      const response = await fetch(url, { method: "POST" });
+      return response.json();
+    }
+
+    document.getElementById("start-camera").addEventListener("click", async () => {
+      await post("/camera/start");
+      document.getElementById("video-feed").src = "{{ url_for('main.video_feed') }}?t=" + Date.now();
+    });
+
+    document.getElementById("stop-camera").addEventListener("click", async () => {
+      await post("/camera/stop");
+    });
+
+    document.getElementById("upload-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData();
+      const fileInput = document.getElementById("video-file");
+      formData.append("video", fileInput.files[0]);
+      const response = await fetch("/analyze/upload", { method: "POST", body: formData });
+      const data = await response.json();
+      document.getElementById("upload-result").textContent = JSON.stringify(data, null, 2);
+    });
+
+    function colorForLabel(label) {
+      if (label === "likely_manipulated") return "#ff4d4f";
+      if (label === "suspicious") return "#faad14";
+      return "#52c41a";
+    }
+
+    async function pollScore() {
+      try {
+        const response = await fetch("/api/score");
+        const data = await response.json();
+        document.getElementById("score-label").textContent = data.label;
+        document.getElementById("score-value").textContent = data.fake_probability.toFixed(2);
+        document.getElementById("score-mode").textContent = data.mode;
+        const bar = document.getElementById("score-bar");
+        bar.style.width = Math.round(data.fake_probability * 100) + "%";
+        bar.style.background = colorForLabel(data.label);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    setInterval(pollScore, 1000);
+  </script>
+</body>
+</html>
