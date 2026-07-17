@@ -60,9 +60,19 @@ This creates `models/artifact_detector.pt` and switches the app to CNN mode on r
 - `GET /about` limitations
 - `GET /video_feed` MJPEG stream with overlay
 - `GET /api/score` latest JSON score
+- `GET /api/config` runtime config and model mode
+- `GET /health` service health
 - `POST /camera/start` start webcam
 - `POST /camera/stop` stop webcam
-- `POST /analyze/upload` analyze uploaded video
+- `POST /analyze/upload` queue uploaded video analysis job
+- `GET /analyze/upload/<job_id>` fetch upload job status/result
+
+## Android Wrapper
+
+A minimal Android WebView wrapper project is available in `android/`.
+
+- See `docs/ANDROID.md` for setup and LAN connection details.
+- The Android app wraps the existing Flask UI and upload flow.
 
 ## Research Relevance
 
