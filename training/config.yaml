@@ -1,0 +1,12 @@
+architecture: mobilenet_v2
+num_classes: 2
+input_size: 224
+batch_size: 16
+epochs: 5
+learning_rate: 0.0003
+train_dir: data/train
+val_dir: data/val
+output_model: models/artifact_detector.pt
+class_names:
+  - real
+  - fake_face_swap

@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+.env.*
+
+# Models and data
+models/*.pt
+models/*.pth
+data/train/
+data/val/
+data/samples/
+uploads/
+
+# IDE
+.vscode/
+.idea/
+
+# Auto-commit runtime
+.cursor/hooks/.debounce-state.json
+.cursor/hooks/.worker.lock
+.cursor/hooks/auto-commit.log
+
+# OS
+Thumbs.db
+Desktop.ini
