@@ -11,6 +11,7 @@ A Flask demo app that analyzes webcam and uploaded video feeds for **face-swap s
 - Uploaded video analysis with sampled-frame scoring
 - Upload job queue listing and retention cleanup controls
 - Frame-analysis concurrency guard to avoid overload on mobile polling
+- Runtime inference-stride tuning from the dashboard
 - PyTorch MobileNetV2 binary classifier (`real` vs `fake_face_swap`)
 - Heuristic fallback mode when no trained checkpoint is available
 - Temporal smoothing to reduce score flicker
@@ -64,6 +65,7 @@ This creates `models/artifact_detector.pt` and switches the app to CNN mode on r
 - `GET /video_feed` MJPEG stream with overlay
 - `GET /api/score` latest JSON score
 - `GET /api/config` runtime config and model mode
+- `POST /api/config` update runtime config values
 - `GET /health` service health
 - `POST /camera/start` start webcam
 - `POST /camera/stop` stop webcam
