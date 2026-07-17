@@ -26,6 +26,12 @@
         <div>Mode: <strong id="score-mode">-</strong></div>
         <div class="meter"><div id="score-bar"></div></div>
       </div>
+      <div class="runtime-config">
+        <label for="inference-stride-input">Inference stride (1-10)</label>
+        <input type="number" id="inference-stride-input" min="1" max="10" value="2">
+        <button id="save-runtime-config">Save Runtime Config</button>
+        <div id="runtime-config-status">Config: loading...</div>
+      </div>
     </section>
 
     <section class="panel">
@@ -163,6 +169,39 @@
     document.getElementById("start-device-camera").addEventListener("click", startDeviceCamera);
     document.getElementById("stop-device-camera").addEventListener("click", stopDeviceCamera);
 
+    async function refreshRuntimeConfig() {
+      try {
+        const response = await fetch("/api/config");
+        const data = await response.json();
+        document.getElementById("inference-stride-input").value = data.inference_stride;
+        document.getElementById("runtime-config-status").textContent =
+          "Config: stride=" + data.inference_stride + ", mode=" + data.mode;
+      } catch (error) {
+        document.getElementById("runtime-config-status").textContent =
+          "Config load failed: " + (error.message || String(error));
+      }
+    }
+
+    document.getElementById("save-runtime-config").addEventListener("click", async () => {
+      const stride = Number(document.getElementById("inference-stride-input").value || 2);
+      try {
+        const response = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inference_stride: stride }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Update failed");
+        }
+        document.getElementById("runtime-config-status").textContent =
+          "Config saved: stride=" + data.config.inference_stride;
+      } catch (error) {
+        document.getElementById("runtime-config-status").textContent =
+          "Save failed: " + (error.message || String(error));
+      }
+    });
+
     async function pollUploadJob(jobId) {
       while (true) {
         const response = await fetch("/analyze/upload/" + jobId);
@@ -217,6 +256,7 @@
     }
 
     setInterval(pollScore, 1000);
+    refreshRuntimeConfig();
   </script>
 </body>
 </html>

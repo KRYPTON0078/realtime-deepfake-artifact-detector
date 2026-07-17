@@ -88,6 +88,33 @@ def api_config():
     )
 
 
+@bp.post("/api/config")
+def api_config_update():
+    payload = request.get_json(silent=True) or {}
+    updated: dict[str, int] = {}
+
+    if "inference_stride" in payload:
+        try:
+            stride = int(payload["inference_stride"])
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "inference_stride must be an integer"}), 400
+        if stride < 1 or stride > 10:
+            return jsonify({"ok": False, "error": "inference_stride must be between 1 and 10"}), 400
+        state.inference_stride = stride
+        updated["inference_stride"] = stride
+
+    config = {
+        "inference_stride": state.inference_stride,
+        "upload_workers": UPLOAD_WORKERS,
+        "upload_job_retention_seconds": UPLOAD_JOB_RETENTION_SECONDS,
+        "max_upload_jobs": MAX_UPLOAD_JOBS,
+        "frame_max_dim": FRAME_MAX_DIM,
+        "frame_concurrency_limit": FRAME_CONCURRENCY_LIMIT,
+        "mode": state.analyzer.mode,
+    }
+    return jsonify({"ok": True, "updated": updated, "config": config})
+
+
 @bp.get("/health")
 def health():
     return jsonify({"ok": True, "service": "deepfake-detector"})
