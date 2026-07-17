@@ -25,17 +25,17 @@ Then open in your browser:
 
 ## Git commits
 
-Auto-commit is **disabled** by default (`.cursor/hooks.json` has no active hooks). Commit and push manually when you are ready.
+Auto-commit is **enabled**. When the Cursor Agent edits files, changes are committed and pushed to `main` automatically after a 60-second debounce window.
+
+Logs: `.cursor/hooks/auto-commit.log`
 
 ## If Cursor shows a hooks / workspace error
 
-If opening the folder fails because of hooks:
+The auto-commit hook is optional. If opening the folder fails because of hooks:
 
 1. Temporarily rename `.cursor/hooks.json` to `.cursor/hooks.json.bak`
 2. Re-open `D:\DeepfakeDetector`
-3. After the workspace opens, rename it back if you want to re-enable hooks
-
-To re-enable auto-commit, restore the `afterFileEdit` entry in `.cursor/hooks.json` (see `GITHUB_SETUP.md`).
+3. After the workspace opens, rename it back if you want auto-commit again
 
 ## If the browser page fails to load
 
