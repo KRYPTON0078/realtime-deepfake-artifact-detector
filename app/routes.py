@@ -25,6 +25,8 @@ upload_jobs_lock = threading.Lock()
 UPLOAD_JOB_RETENTION_SECONDS = max(60, int(os.getenv("UPLOAD_JOB_RETENTION_SECONDS", "1800")))
 MAX_UPLOAD_JOBS = max(10, int(os.getenv("MAX_UPLOAD_JOBS", "200")))
 FRAME_MAX_DIM = max(160, int(os.getenv("FRAME_MAX_DIM", "640")))
+FRAME_CONCURRENCY_LIMIT = max(1, int(os.getenv("FRAME_CONCURRENCY_LIMIT", "2")))
+frame_semaphore = threading.BoundedSemaphore(FRAME_CONCURRENCY_LIMIT)
 
 DISCLAIMER = (
     "Detector trained for face-swap artifact patterns; "
@@ -80,6 +82,7 @@ def api_config():
             "upload_job_retention_seconds": UPLOAD_JOB_RETENTION_SECONDS,
             "max_upload_jobs": MAX_UPLOAD_JOBS,
             "frame_max_dim": FRAME_MAX_DIM,
+            "frame_concurrency_limit": FRAME_CONCURRENCY_LIMIT,
             "mode": state.analyzer.mode,
         }
     )
@@ -92,42 +95,48 @@ def health():
 
 @bp.post("/analyze/frame")
 def analyze_frame():
+    acquired = frame_semaphore.acquire(blocking=False)
+    if not acquired:
+        return jsonify({"ok": False, "error": "Frame analysis busy, retry shortly"}), 429
     start = time.perf_counter()
-    payload = request.get_json(silent=True) or {}
-    image_base64 = payload.get("image_base64")
-    if not image_base64:
-        return jsonify({"ok": False, "error": "image_base64 is required"}), 400
-
-    # Support raw base64 and data URLs like "data:image/jpeg;base64,..."
-    if "," in image_base64:
-        image_base64 = image_base64.split(",", 1)[1]
-
     try:
-        image_bytes = base64.b64decode(image_base64, validate=True)
-    except (binascii.Error, ValueError):
-        return jsonify({"ok": False, "error": "Invalid base64 image"}), 400
+        payload = request.get_json(silent=True) or {}
+        image_base64 = payload.get("image_base64")
+        if not image_base64:
+            return jsonify({"ok": False, "error": "image_base64 is required"}), 400
 
-    np_bytes = np.frombuffer(image_bytes, dtype=np.uint8)
-    frame = cv2.imdecode(np_bytes, cv2.IMREAD_COLOR)
-    if frame is None:
-        return jsonify({"ok": False, "error": "Could not decode image"}), 400
-    h, w = frame.shape[:2]
-    longest = max(h, w)
-    if longest > FRAME_MAX_DIM:
-        scale = FRAME_MAX_DIM / float(longest)
-        frame = cv2.resize(frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        # Support raw base64 and data URLs like "data:image/jpeg;base64,..."
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
 
-    result = state.analyze_and_store(frame, smooth=True)
-    response = {
-        "ok": True,
-        "fake_probability": result.fake_probability,
-        "label": result.label,
-        "face_detected": result.face_detected,
-        "mode": result.mode,
-        "timestamp": time.time(),
-        "processing_ms": round((time.perf_counter() - start) * 1000, 2),
-    }
-    return jsonify(response)
+        try:
+            image_bytes = base64.b64decode(image_base64, validate=True)
+        except (binascii.Error, ValueError):
+            return jsonify({"ok": False, "error": "Invalid base64 image"}), 400
+
+        np_bytes = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(np_bytes, cv2.IMREAD_COLOR)
+        if frame is None:
+            return jsonify({"ok": False, "error": "Could not decode image"}), 400
+        h, w = frame.shape[:2]
+        longest = max(h, w)
+        if longest > FRAME_MAX_DIM:
+            scale = FRAME_MAX_DIM / float(longest)
+            frame = cv2.resize(frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+        result = state.analyze_and_store(frame, smooth=True)
+        response = {
+            "ok": True,
+            "fake_probability": result.fake_probability,
+            "label": result.label,
+            "face_detected": result.face_detected,
+            "mode": result.mode,
+            "timestamp": time.time(),
+            "processing_ms": round((time.perf_counter() - start) * 1000, 2),
+        }
+        return jsonify(response)
+    finally:
+        frame_semaphore.release()
 
 
 @bp.post("/camera/start")
