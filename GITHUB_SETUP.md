@@ -18,14 +18,13 @@ git remote add origin https://github.com/KRYPTON0078/realtime-deepfake-artifact-
 git push -u origin main
 ```
 
-## Auto-commit hooks
+## Auto-commit hooks (disabled by default)
 
-Project hooks are configured in:
+Scripts are kept for optional use:
 
-- `.cursor/hooks.json`
 - `.cursor/hooks/auto-commit.ps1`
 - `.cursor/hooks/auto-commit-worker.ps1`
 
-Open `D:\DeepfakeDetector` as the Cursor workspace root so Agent edits auto-commit and push to `main` after a 60-second debounce window.
+Auto-commit is **off** in `.cursor/hooks.json` (`"hooks": {}`). Commit and push manually, or re-enable by adding an `afterFileEdit` hook that runs `auto-commit.ps1` (60-second debounce, then commit and push to `main`).
 
-Logs: `.cursor/hooks/auto-commit.log`
+Logs when enabled: `.cursor/hooks/auto-commit.log`

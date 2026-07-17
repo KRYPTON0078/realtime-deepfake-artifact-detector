@@ -1,10 +1,4 @@
-{
+﻿{
   "version": 1,
-  "hooks": {
-    "afterFileEdit": [
-      {
-        "command": ".cursor/hooks/auto-commit.ps1"
-      }
-    ]
-  }
+  "hooks": {}
 }
