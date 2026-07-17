@@ -7,6 +7,7 @@ This project includes a minimal Android wrapper in `android/` that loads the Fla
 - Launches a WebView to the backend URL.
 - Supports JavaScript and DOM storage for the existing web UI.
 - Reuses the upload flow from the Flask app.
+- Supports live device camera analysis through browser `getUserMedia` + `/analyze/frame`.
 
 ## Prerequisites
 
@@ -46,4 +47,5 @@ Ensure your phone/emulator can reach that host and port on the same network.
 
 ## Current limitation
 
-The live webcam buttons in the web UI control **server-side** camera capture (`cv2.VideoCapture`), not the phone camera. Upload analysis works on Android through the same backend API.
+- The "Live Webcam Analysis" panel still controls **server-side** camera capture (`cv2.VideoCapture`).
+- For phone camera analysis, use the "Device Camera (Mobile/WebView)" panel, which samples camera frames and sends them to `POST /analyze/frame`.

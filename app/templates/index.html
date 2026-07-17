@@ -29,6 +29,19 @@
     </section>
 
     <section class="panel">
+      <h2>Device Camera (Mobile/WebView)</h2>
+      <div class="controls">
+        <button id="start-device-camera">Start Device Camera</button>
+        <button id="stop-device-camera">Stop Device Camera</button>
+      </div>
+      <label for="mobile-interval-ms">Analyze every (ms)</label>
+      <input type="number" id="mobile-interval-ms" min="200" max="5000" value="900">
+      <video id="device-camera-preview" playsinline autoplay muted></video>
+      <canvas id="device-camera-canvas" width="320" height="240"></canvas>
+      <div id="device-camera-status">Idle</div>
+    </section>
+
+    <section class="panel">
       <h2>Upload Video</h2>
       <form id="upload-form">
         <input type="file" id="video-file" name="video" accept="video/*" required>
@@ -45,6 +58,87 @@
   </footer>
 
   <script>
+    let deviceStream = null;
+    let deviceAnalyzeTimer = null;
+    let deviceRequestInFlight = false;
+
+    function setDeviceStatus(text) {
+      document.getElementById("device-camera-status").textContent = text;
+    }
+
+    function updateScoreCard(data) {
+      document.getElementById("score-label").textContent = data.label;
+      document.getElementById("score-value").textContent = Number(data.fake_probability || 0).toFixed(2);
+      document.getElementById("score-mode").textContent = data.mode || "-";
+      const bar = document.getElementById("score-bar");
+      bar.style.width = Math.round((data.fake_probability || 0) * 100) + "%";
+      bar.style.background = colorForLabel(data.label);
+    }
+
+    async function analyzeDeviceFrame() {
+      if (!deviceStream || deviceRequestInFlight) return;
+      const video = document.getElementById("device-camera-preview");
+      if (video.readyState < 2) return;
+      deviceRequestInFlight = true;
+      const canvas = document.getElementById("device-camera-canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      try {
+        const response = await fetch("/analyze/frame", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: dataUrl }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "Frame analysis failed");
+        }
+        updateScoreCard(data);
+        setDeviceStatus("Analyzing...");
+      } catch (error) {
+        setDeviceStatus("Error: " + (error.message || String(error)));
+      } finally {
+        deviceRequestInFlight = false;
+      }
+    }
+
+    async function startDeviceCamera() {
+      if (deviceStream) return;
+      try {
+        const constraints = {
+          video: {
+            facingMode: { ideal: "user" },
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        };
+        deviceStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.getElementById("device-camera-preview");
+        video.srcObject = deviceStream;
+        const intervalMs = Math.max(200, Number(document.getElementById("mobile-interval-ms").value || 900));
+        deviceAnalyzeTimer = setInterval(analyzeDeviceFrame, intervalMs);
+        setDeviceStatus("Camera started");
+      } catch (error) {
+        setDeviceStatus("Camera permission failed: " + (error.message || String(error)));
+      }
+    }
+
+    function stopDeviceCamera() {
+      if (deviceAnalyzeTimer) {
+        clearInterval(deviceAnalyzeTimer);
+        deviceAnalyzeTimer = null;
+      }
+      if (deviceStream) {
+        deviceStream.getTracks().forEach((track) => track.stop());
+        deviceStream = null;
+      }
+      const video = document.getElementById("device-camera-preview");
+      video.srcObject = null;
+      setDeviceStatus("Stopped");
+    }
+
     async function post(url) {
       const response = await fetch(url, { method: "POST" });
       return response.json();
@@ -58,6 +152,9 @@
     document.getElementById("stop-camera").addEventListener("click", async () => {
       await post("/camera/stop");
     });
+
+    document.getElementById("start-device-camera").addEventListener("click", startDeviceCamera);
+    document.getElementById("stop-device-camera").addEventListener("click", stopDeviceCamera);
 
     async function pollUploadJob(jobId) {
       while (true) {
@@ -106,12 +203,7 @@
       try {
         const response = await fetch("/api/score");
         const data = await response.json();
-        document.getElementById("score-label").textContent = data.label;
-        document.getElementById("score-value").textContent = data.fake_probability.toFixed(2);
-        document.getElementById("score-mode").textContent = data.mode;
-        const bar = document.getElementById("score-bar");
-        bar.style.width = Math.round(data.fake_probability * 100) + "%";
-        bar.style.background = colorForLabel(data.label);
+        updateScoreCard(data);
       } catch (error) {
         console.error(error);
       }

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import os
 import threading
 import time
@@ -10,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import cv2
+import numpy as np
 from flask import Blueprint, Response, jsonify, render_template, request
 
 from app.state import UPLOAD_DIR, state
@@ -55,6 +58,39 @@ def api_config():
 @bp.get("/health")
 def health():
     return jsonify({"ok": True, "service": "deepfake-detector"})
+
+
+@bp.post("/analyze/frame")
+def analyze_frame():
+    payload = request.get_json(silent=True) or {}
+    image_base64 = payload.get("image_base64")
+    if not image_base64:
+        return jsonify({"ok": False, "error": "image_base64 is required"}), 400
+
+    # Support raw base64 and data URLs like "data:image/jpeg;base64,..."
+    if "," in image_base64:
+        image_base64 = image_base64.split(",", 1)[1]
+
+    try:
+        image_bytes = base64.b64decode(image_base64, validate=True)
+    except (binascii.Error, ValueError):
+        return jsonify({"ok": False, "error": "Invalid base64 image"}), 400
+
+    np_bytes = np.frombuffer(image_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(np_bytes, cv2.IMREAD_COLOR)
+    if frame is None:
+        return jsonify({"ok": False, "error": "Could not decode image"}), 400
+
+    result = state.analyze_and_store(frame, smooth=True)
+    response = {
+        "ok": True,
+        "fake_probability": result.fake_probability,
+        "label": result.label,
+        "face_detected": result.face_detected,
+        "mode": result.mode,
+        "timestamp": time.time(),
+    }
+    return jsonify(response)
 
 
 @bp.post("/camera/start")
