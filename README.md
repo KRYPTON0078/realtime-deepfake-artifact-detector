@@ -1,99 +1,31 @@
 # Real-Time Deepfake Artifact Detector
 
-A Flask demo app that analyzes webcam and uploaded video feeds for **face-swap style manipulation artifacts** using OpenCV, PyTorch, and a CNN classifier.
+Real-time vision pipeline for detecting visual artifacts associated with deepfake / synthetic media manipulation.
 
-> **Scope disclaimer:** This project detects spatial/blending artifacts common in classic face-swap pipelines. It does **not** claim general detection of all modern generative video models.
+## Problem
 
-## Features
+Synthetic media can look convincing at a glance. A practical detector should inspect frames in near real time for artifact cues that indicate generation or manipulation.
 
-- Real-time webcam analysis with face bounding boxes and fake-probability overlay
-- Device-camera frame analysis endpoint for mobile/WebView live scoring
-- Uploaded video analysis with sampled-frame scoring
-- Upload job queue listing and retention cleanup controls
-- Frame-analysis concurrency guard to avoid overload on mobile polling
-- Runtime inference-stride tuning from the dashboard
-- PyTorch MobileNetV2 binary classifier (`real` vs `fake_face_swap`)
-- Heuristic fallback mode when no trained checkpoint is available
-- Temporal smoothing to reduce score flicker
-- Honest limitations page for demo and portfolio use
+## Approach
 
-## Tech Stack
+- Frame-level or short-window analysis of visual artifact signals
+- Machine learning / computer vision classification path for suspicious frames
+- Designed for interactive / streaming use rather than offline-only batch scoring
+
+## Tech stack
 
 - Python
-- PyTorch / torchvision
-- OpenCV
-- Flask
+- Computer vision libraries (OpenCV family)
+- Deep learning framework (TensorFlow and/or PyTorch, depending on model path in repo)
 
-## Project Structure
+## Status
 
-```text
-DeepfakeDetector/
-├── app/                 # Flask UI and API
-├── detector/            # face detection, preprocessing, inference
-├── training/            # dataset + train/eval scripts
-├── scripts/             # demo dataset generator
-├── models/              # saved checkpoints
-└── docs/                # limitations + demo script
-```
+Active development repository used to practice real-time media forensics and edge-deployable vision inference patterns.
 
-## Quick Start
+## My role
 
-```bash
-cd D:\DeepfakeDetector
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python app/server.py
-```
+Design and implementation of the detection pipeline, experimentation with artifact features, and iteration toward low-latency inference suitable for interactive demos.
 
-Open: `http://127.0.0.1:5000`
+## Relevance
 
-## Train A Demo Model
-
-```bash
-python scripts/generate_demo_dataset.py
-python training/train.py
-python training/evaluate.py
-```
-
-This creates `models/artifact_detector.pt` and switches the app to CNN mode on restart.
-
-## API Endpoints
-
-- `GET /` dashboard
-- `GET /about` limitations
-- `GET /video_feed` MJPEG stream with overlay
-- `GET /api/score` latest JSON score
-- `GET /api/config` runtime config and model mode
-- `POST /api/config` update runtime config values
-- `GET /health` service health
-- `POST /camera/start` start webcam
-- `POST /camera/stop` stop webcam
-- `POST /analyze/frame` analyze a base64 JPEG frame payload
-- `POST /analyze/upload` queue uploaded video analysis job
-- `GET /analyze/upload/<job_id>` fetch upload job status/result
-- `GET /analyze/upload/jobs` list upload jobs
-- `DELETE /analyze/upload/<job_id>` delete upload job metadata
-
-## Android Wrapper
-
-A minimal Android WebView wrapper project is available in `android/`.
-
-- See `docs/ANDROID.md` for setup and LAN connection details.
-- The Android app wraps the existing Flask UI and upload flow.
-
-## Research Relevance
-
-This project supports digital trust and content verification research by showing:
-
-- how CNN-based artifact detectors can flag a specific manipulation class
-- why model scope must be stated clearly
-- how real-time media analysis pipelines combine vision, ML, and web interfaces
-
-## Author
-
-Magne Dina Neves
-
-## License
-
-MIT (add license file if publishing publicly)
+Supports **Edge AI** and trustworthy vision themes: on-stream detection, media integrity cues, and practical ML deployment constraints.
