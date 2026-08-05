@@ -14,6 +14,12 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:5000/\"")
+        // Override at build time for real devices, e.g.:
+        // ./gradlew assembleDebug -PBACKEND_URL=http://192.168.1.23:5000/
+        def backendUrl = project.findProperty("BACKEND_URL")
+        if (backendUrl != null) {
+            buildConfigField("String", "BASE_URL", "\"${backendUrl}\"")
+        }
     }
 
     buildTypes {

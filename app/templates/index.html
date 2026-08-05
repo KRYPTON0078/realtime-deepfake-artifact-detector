@@ -13,8 +13,8 @@
   </header>
 
   <main class="layout">
-    <section class="panel">
-      <h2>Live Webcam Analysis</h2>
+    <section class="panel" id="server-webcam-panel">
+      <h2>Live Webcam Analysis <span class="badge">Desktop / server camera</span></h2>
       <div class="controls">
         <button id="start-camera">Start Camera</button>
         <button id="stop-camera">Stop Camera</button>
@@ -24,6 +24,7 @@
         <div>Label: <strong id="score-label">idle</strong></div>
         <div>Fake probability: <strong id="score-value">0.00</strong></div>
         <div>Mode: <strong id="score-mode">-</strong></div>
+        <div>Face confidence: <strong id="score-face-conf">-</strong></div>
         <div class="meter"><div id="score-bar"></div></div>
       </div>
       <div class="runtime-config">
@@ -42,8 +43,11 @@
       </div>
       <label for="mobile-interval-ms">Analyze every (ms)</label>
       <input type="number" id="mobile-interval-ms" min="200" max="5000" value="900">
-      <video id="device-camera-preview" playsinline autoplay muted></video>
-      <canvas id="device-camera-canvas" width="320" height="240"></canvas>
+      <div class="device-preview-wrap">
+        <video id="device-camera-preview" playsinline autoplay muted></video>
+        <canvas id="device-overlay-canvas"></canvas>
+      </div>
+      <canvas id="device-camera-canvas" width="640" height="480"></canvas>
       <div id="device-camera-status">Idle</div>
       <div id="device-camera-latency">Last frame latency: - ms</div>
     </section>
@@ -68,18 +72,64 @@
     let deviceStream = null;
     let deviceAnalyzeTimer = null;
     let deviceRequestInFlight = false;
+    let currentIntervalMs = 900;
+    let lastFaceBox = null;
 
     function setDeviceStatus(text) {
       document.getElementById("device-camera-status").textContent = text;
+    }
+
+    function colorForLabel(label) {
+      if (label === "likely_manipulated") return "#ff4d4f";
+      if (label === "suspicious") return "#faad14";
+      return "#52c41a";
     }
 
     function updateScoreCard(data) {
       document.getElementById("score-label").textContent = data.label;
       document.getElementById("score-value").textContent = Number(data.fake_probability || 0).toFixed(2);
       document.getElementById("score-mode").textContent = data.mode || "-";
+      document.getElementById("score-face-conf").textContent =
+        data.face_confidence == null ? "-" : Number(data.face_confidence).toFixed(2);
       const bar = document.getElementById("score-bar");
       bar.style.width = Math.round((data.fake_probability || 0) * 100) + "%";
       bar.style.background = colorForLabel(data.label);
+    }
+
+    function syncCaptureCanvas() {
+      const video = document.getElementById("device-camera-preview");
+      const canvas = document.getElementById("device-camera-canvas");
+      const overlay = document.getElementById("device-overlay-canvas");
+      const width = Math.min(640, video.videoWidth || 640);
+      const height = Math.min(480, video.videoHeight || 480);
+      canvas.width = width;
+      canvas.height = height;
+      overlay.width = width;
+      overlay.height = height;
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+    }
+
+    function drawFaceOverlay(faceBox, label) {
+      const overlay = document.getElementById("device-overlay-canvas");
+      const ctx = overlay.getContext("2d");
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      if (!faceBox) return;
+      const [x, y, w, h] = faceBox;
+      ctx.strokeStyle = colorForLabel(label);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x, y, w, h);
+      ctx.fillStyle = colorForLabel(label);
+      ctx.font = "16px sans-serif";
+      ctx.fillText(label || "face", x, Math.max(16, y - 8));
+    }
+
+    function scheduleDeviceAnalyze(delayMs) {
+      if (deviceAnalyzeTimer) clearTimeout(deviceAnalyzeTimer);
+      deviceAnalyzeTimer = setTimeout(async () => {
+        await analyzeDeviceFrame();
+        if (deviceStream) scheduleDeviceAnalyze(currentIntervalMs);
+      }, delayMs);
     }
 
     async function analyzeDeviceFrame() {
@@ -87,10 +137,11 @@
       const video = document.getElementById("device-camera-preview");
       if (video.readyState < 2) return;
       deviceRequestInFlight = true;
+      syncCaptureCanvas();
       const canvas = document.getElementById("device-camera-canvas");
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
       try {
         const response = await fetch("/analyze/frame", {
           method: "POST",
@@ -99,15 +150,21 @@
         });
         const data = await response.json();
         if (response.status === 429) {
-          setDeviceStatus("Analyzer busy, retrying...");
+          setDeviceStatus("Analyzer busy, backing off...");
+          currentIntervalMs = Math.min(5000, Math.round(currentIntervalMs * 1.5));
           return;
         }
         if (!response.ok || !data.ok) {
           throw new Error(data.error || "Frame analysis failed");
         }
         updateScoreCard(data);
+        lastFaceBox = data.face_box || null;
+        drawFaceOverlay(lastFaceBox, data.label);
+        const latency = Number(data.processing_ms || 0);
         document.getElementById("device-camera-latency").textContent =
-          "Last frame latency: " + Number(data.processing_ms || 0).toFixed(1) + " ms";
+          "Last frame latency: " + latency.toFixed(1) + " ms";
+        const requested = Math.max(200, Number(document.getElementById("mobile-interval-ms").value || 900));
+        currentIntervalMs = Math.max(requested, Math.round(latency + 50));
         setDeviceStatus("Analyzing...");
       } catch (error) {
         setDeviceStatus("Error: " + (error.message || String(error)));
@@ -130,8 +187,10 @@
         deviceStream = await navigator.mediaDevices.getUserMedia(constraints);
         const video = document.getElementById("device-camera-preview");
         video.srcObject = deviceStream;
-        const intervalMs = Math.max(200, Number(document.getElementById("mobile-interval-ms").value || 900));
-        deviceAnalyzeTimer = setInterval(analyzeDeviceFrame, intervalMs);
+        await video.play();
+        syncCaptureCanvas();
+        currentIntervalMs = Math.max(200, Number(document.getElementById("mobile-interval-ms").value || 900));
+        scheduleDeviceAnalyze(250);
         setDeviceStatus("Camera started");
       } catch (error) {
         setDeviceStatus("Camera permission failed: " + (error.message || String(error)));
@@ -140,7 +199,7 @@
 
     function stopDeviceCamera() {
       if (deviceAnalyzeTimer) {
-        clearInterval(deviceAnalyzeTimer);
+        clearTimeout(deviceAnalyzeTimer);
         deviceAnalyzeTimer = null;
       }
       if (deviceStream) {
@@ -149,6 +208,7 @@
       }
       const video = document.getElementById("device-camera-preview");
       video.srcObject = null;
+      drawFaceOverlay(null, null);
       setDeviceStatus("Stopped");
     }
 
@@ -158,7 +218,11 @@
     }
 
     document.getElementById("start-camera").addEventListener("click", async () => {
-      await post("/camera/start");
+      const result = await post("/camera/start");
+      if (!result.ok) {
+        alert(result.error || "Failed to start camera");
+        return;
+      }
       document.getElementById("video-feed").src = "{{ url_for('main.video_feed') }}?t=" + Date.now();
     });
 
@@ -175,7 +239,8 @@
         const data = await response.json();
         document.getElementById("inference-stride-input").value = data.inference_stride;
         document.getElementById("runtime-config-status").textContent =
-          "Config: stride=" + data.inference_stride + ", mode=" + data.mode;
+          "Config: stride=" + data.inference_stride + ", mode=" + data.mode +
+          ", face=" + (data.face_detector_backend || "-");
       } catch (error) {
         document.getElementById("runtime-config-status").textContent =
           "Config load failed: " + (error.message || String(error));
@@ -203,7 +268,11 @@
     });
 
     async function pollUploadJob(jobId) {
+      const started = Date.now();
       while (true) {
+        if (Date.now() - started > 180000) {
+          throw new Error("Upload analysis timed out");
+        }
         const response = await fetch("/analyze/upload/" + jobId);
         const data = await response.json();
         if (data.status === "done") return data.result;
@@ -239,12 +308,6 @@
       }
     });
 
-    function colorForLabel(label) {
-      if (label === "likely_manipulated") return "#ff4d4f";
-      if (label === "suspicious") return "#faad14";
-      return "#52c41a";
-    }
-
     async function pollScore() {
       try {
         const response = await fetch("/api/score");
@@ -253,6 +316,10 @@
       } catch (error) {
         console.error(error);
       }
+    }
+
+    if (/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) {
+      document.getElementById("server-webcam-panel").classList.add("desktop-only-hint");
     }
 
     setInterval(pollScore, 1000);
