@@ -59,11 +59,49 @@ header h1 {
   background: #000;
   min-height: 240px;
   object-fit: cover;
-  margin-top: 8px;
+  display: block;
 }
 
 #device-camera-canvas {
   display: none;
+}
+
+.device-preview-wrap {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+}
+
+#device-overlay-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.desktop-only-hint {
+  opacity: 0.72;
+}
+
+.desktop-only-hint::after {
+  content: "On phones, prefer Device Camera below (server webcam uses the host machine).";
+  display: block;
+  margin-top: 8px;
+  color: #fbbf24;
+  font-size: 0.9rem;
 }
 
 #device-camera-status {
