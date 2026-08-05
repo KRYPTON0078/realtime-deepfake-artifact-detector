@@ -12,7 +12,11 @@ env/
 # Models and data
 models/*.pt
 models/*.pth
+models/*.history.json
+models/eval_metrics.json
+models/video_eval_metrics.json
 !models/face_detection_yunet_2023mar.onnx
+!models/calibrated_thresholds.json
 data/train/
 data/val/
 data/samples/
