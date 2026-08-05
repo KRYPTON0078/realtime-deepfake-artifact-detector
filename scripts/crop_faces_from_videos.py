@@ -64,7 +64,7 @@ def extract_faces_from_video(
             continue
         face_crop, detection = detector.crop_largest_face(frame)
         if detection is not None:
-            padded = crop_with_margin(frame, detection, crop_config)
+            padded = crop_with_margin(frame, detection.box, crop_config)
             if padded is not None:
                 crops.append(padded)
         frame_index += 1
