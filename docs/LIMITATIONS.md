@@ -27,10 +27,21 @@ The demo does **not** claim reliable detection for:
 
 Recommended public datasets for stronger training:
 
-- FaceForensics++
-- Celeb-DF v2
+- FaceForensics++ (Deepfakes + FaceSwap manipulations; prefer **c23** compression)
+- Celeb-DF v2 (harder holdout / cross-dataset check)
 
-Document the exact subset, split, and preprocessing steps whenever you report results.
+Prep pipeline:
+
+```bash
+# organize licensed videos under data/raw_videos/{real,fake_face_swap}/
+python scripts/download_sample_data.py --run-crop
+python training/train.py
+python training/evaluate.py
+```
+
+Face crops use the project detector with margin padding (`scripts/crop_faces_from_videos.py`) so train and inference share the same crop policy.
+
+Document the exact subset, split seed, compression level, and crop settings whenever you report results. The bundled synthetic demo dataset is for local plumbing only — a perfect synthetic val accuracy is not evidence of real-world deepfake detection quality.
 
 ## Evaluation Caveats
 

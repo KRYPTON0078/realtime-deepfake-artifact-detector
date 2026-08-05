@@ -15,6 +15,9 @@ models/*.pth
 data/train/
 data/val/
 data/samples/
+data/raw_videos/
+data/eval_clips/
+data/dataset_manifest.json
 uploads/
 
 # IDE
