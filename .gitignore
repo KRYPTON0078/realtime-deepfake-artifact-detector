@@ -12,11 +12,12 @@ env/
 # Models and data
 models/*.pt
 models/*.pth
+!models/face_detection_yunet_2023mar.onnx
 data/train/
 data/val/
 data/samples/
 data/raw_videos/
-data/eval_clips/
+data/eval_clips/*
 !data/eval_clips/.gitkeep
 !data/eval_clips/README.md
 data/dataset_manifest.json
