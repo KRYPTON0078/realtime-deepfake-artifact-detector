@@ -84,6 +84,8 @@ def api_config():
             "frame_max_dim": FRAME_MAX_DIM,
             "frame_concurrency_limit": FRAME_CONCURRENCY_LIMIT,
             "mode": state.analyzer.mode,
+            "thresholds": state.analyzer.thresholds,
+            "face_detector_backend": state.analyzer.face_detector.backend,
         }
     )
 
@@ -91,7 +93,7 @@ def api_config():
 @bp.post("/api/config")
 def api_config_update():
     payload = request.get_json(silent=True) or {}
-    updated: dict[str, int] = {}
+    updated: dict = {}
 
     if "inference_stride" in payload:
         try:
@@ -103,6 +105,17 @@ def api_config_update():
         state.inference_stride = stride
         updated["inference_stride"] = stride
 
+    threshold_keys = ("fake_threshold", "warn_threshold", "enter_fake", "exit_fake")
+    threshold_updates = {}
+    for key in threshold_keys:
+        if key in payload:
+            try:
+                threshold_updates[key] = float(payload[key])
+            except (TypeError, ValueError):
+                return jsonify({"ok": False, "error": f"{key} must be a float"}), 400
+    if threshold_updates:
+        updated["thresholds"] = state.analyzer.set_thresholds(**threshold_updates)
+
     config = {
         "inference_stride": state.inference_stride,
         "upload_workers": UPLOAD_WORKERS,
@@ -111,6 +124,8 @@ def api_config_update():
         "frame_max_dim": FRAME_MAX_DIM,
         "frame_concurrency_limit": FRAME_CONCURRENCY_LIMIT,
         "mode": state.analyzer.mode,
+        "thresholds": state.analyzer.thresholds,
+        "face_detector_backend": state.analyzer.face_detector.backend,
     }
     return jsonify({"ok": True, "updated": updated, "config": config})
 
