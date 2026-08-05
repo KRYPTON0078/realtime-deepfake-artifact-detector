@@ -1,0 +1,34 @@
+{
+  "fake_threshold": 0.5,
+  "warn_threshold": 0.35,
+  "enter_fake": 0.55,
+  "exit_fake": 0.35,
+  "metrics_at_fake_threshold": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "auc": 1.0,
+    "true_positives": 12,
+    "false_positives": 0,
+    "true_negatives": 12,
+    "false_negatives": 0,
+    "ece": 0.0018153622125585873,
+    "threshold": 0.5,
+    "support": 24
+  },
+  "metrics_at_default_0_55": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "auc": 1.0,
+    "true_positives": 12,
+    "false_positives": 0,
+    "true_negatives": 12,
+    "false_negatives": 0,
+    "ece": 0.0018153622125585873,
+    "threshold": 0.55,
+    "support": 24
+  }
+}
