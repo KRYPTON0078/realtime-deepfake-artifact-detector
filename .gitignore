@@ -17,6 +17,8 @@ data/val/
 data/samples/
 data/raw_videos/
 data/eval_clips/
+!data/eval_clips/.gitkeep
+!data/eval_clips/README.md
 data/dataset_manifest.json
 uploads/
 
