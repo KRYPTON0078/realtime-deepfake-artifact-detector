@@ -119,7 +119,7 @@ class FaceDetector:
         face = detections[0]
         if face.confidence < self.min_confidence and self.backend == "yunet":
             return None, None
-        crop = crop_with_margin(frame, face, self.crop_config)
+        crop = crop_with_margin(frame, face.box, self.crop_config)
         if crop is None:
             return None, None
         return crop, face
