@@ -65,6 +65,8 @@ class FaceDetector:
 
         cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         self._cascade = cv2.CascadeClassifier(cascade_path)
+        if self._cascade.empty():
+            self._cascade = None
 
     def _detect_yunet(self, frame: np.ndarray) -> list[FaceDetection]:
         assert self._yunet is not None
@@ -88,6 +90,8 @@ class FaceDetector:
         return detections
 
     def _detect_haar(self, frame: np.ndarray) -> list[FaceDetection]:
+        if self._cascade is None:
+            return []
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self._cascade.detectMultiScale(
             gray,
