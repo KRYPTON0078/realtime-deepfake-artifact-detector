@@ -41,19 +41,24 @@ def _prune_upload_jobs(now: float | None = None) -> None:
     for job_id, job in upload_jobs.items():
         status = job.get("status")
         finished_at = job.get("finished_at")
+        # Never prune active work.
+        if status in {"queued", "running"}:
+            continue
         if status in {"done", "failed"} and finished_at:
             if now - float(finished_at) > UPLOAD_JOB_RETENTION_SECONDS:
                 to_delete.append(job_id)
     for job_id in to_delete:
         upload_jobs.pop(job_id, None)
 
-    # Hard cap to avoid unbounded memory growth from queued/running metadata.
-    if len(upload_jobs) > MAX_UPLOAD_JOBS:
-        oldest = sorted(
-            upload_jobs.items(),
-            key=lambda item: float(item[1].get("created_at", now)),
-        )
-        overflow = len(upload_jobs) - MAX_UPLOAD_JOBS
+    # Hard cap only among finished jobs.
+    finished = [
+        (job_id, job)
+        for job_id, job in upload_jobs.items()
+        if job.get("status") not in {"queued", "running"}
+    ]
+    overflow = len(upload_jobs) - MAX_UPLOAD_JOBS
+    if overflow > 0 and finished:
+        oldest = sorted(finished, key=lambda item: float(item[1].get("created_at", now)))
         for job_id, _ in oldest[:overflow]:
             upload_jobs.pop(job_id, None)
 
@@ -132,7 +137,7 @@ def api_config_update():
 
 @bp.get("/health")
 def health():
-    return jsonify({"ok": True, "service": "deepfake-detector"})
+    return jsonify(state.health_dict())
 
 
 @bp.post("/analyze/frame")
@@ -166,13 +171,15 @@ def analyze_frame():
             scale = FRAME_MAX_DIM / float(longest)
             frame = cv2.resize(frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-        result = state.analyze_and_store(frame, smooth=True)
+        result = state.analyze_and_store(frame, smooth=True, path="mobile")
         response = {
             "ok": True,
             "fake_probability": result.fake_probability,
             "label": result.label,
             "face_detected": result.face_detected,
             "mode": result.mode,
+            "face_box": result.face_box,
+            "face_confidence": result.face_confidence,
             "timestamp": time.time(),
             "processing_ms": round((time.perf_counter() - start) * 1000, 2),
         }
@@ -184,33 +191,31 @@ def analyze_frame():
 @bp.post("/camera/start")
 def camera_start():
     index = int(request.form.get("camera_index", 0))
-    state.start_camera(index)
-    return jsonify({"ok": True, "message": "Camera started"})
+    result = state.start_camera(index)
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
 
 
 @bp.post("/camera/stop")
 def camera_stop():
-    state.stop_camera()
+    state.stop_camera(join_worker=True)
     return jsonify({"ok": True, "message": "Camera stopped"})
 
 
 @bp.get("/video_feed")
 def video_feed():
     def generate():
+        idle_sleep = 1.0 / max(1.0, float(os.getenv("STREAM_TARGET_FPS", "12")))
         while True:
-            frame = state.read_frame()
-            if frame is None:
+            jpeg = state.get_latest_overlay_jpeg()
+            if jpeg is None:
                 time.sleep(0.05)
-                continue
-            result = state.analyze_and_store(frame)
-            overlay = state.analyzer.draw_overlay(frame, result)
-            ok, buffer = cv2.imencode(".jpg", overlay)
-            if not ok:
                 continue
             yield (
                 b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n"
+                b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
             )
+            time.sleep(idle_sleep)
 
     return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
@@ -254,9 +259,13 @@ def analyze_upload():
             summary["disclaimer"] = DISCLAIMER
             with upload_jobs_lock:
                 if job_id in upload_jobs:
-                    upload_jobs[job_id]["status"] = "done"
+                    if summary.get("ok"):
+                        upload_jobs[job_id]["status"] = "done"
+                        upload_jobs[job_id]["result"] = summary
+                    else:
+                        upload_jobs[job_id]["status"] = "failed"
+                        upload_jobs[job_id]["error"] = summary.get("error", "Upload analysis failed")
                     upload_jobs[job_id]["finished_at"] = time.time()
-                    upload_jobs[job_id]["result"] = summary
         except Exception as exc:
             with upload_jobs_lock:
                 if job_id in upload_jobs:
