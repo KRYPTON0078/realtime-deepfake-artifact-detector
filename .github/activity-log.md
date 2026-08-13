@@ -10,3 +10,4 @@ Tracks meaningful project activity for contribution continuity.
 | 2026-08-10 | Android LAN backend URL testing |
 | 2026-08-11 | Upload job queue stability checks |
 | 2026-08-12 | Threshold calibration rerun |
+| 2026-08-13 | Training augmentations review |
