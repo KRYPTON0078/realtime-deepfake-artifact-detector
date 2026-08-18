@@ -29,6 +29,10 @@ function Get-LastEditTime {
 try {
     Set-Location $RepoRoot
     $env:GIT_SSL_NO_VERIFY = "true"
+    $env:GIT_AUTHOR_NAME = "Magne Dina Neves"
+    $env:GIT_AUTHOR_EMAIL = "magnedinanevesdina@gmail.com"
+    $env:GIT_COMMITTER_NAME = "Magne Dina Neves"
+    $env:GIT_COMMITTER_EMAIL = "magnedinanevesdina@gmail.com"
     Write-Log "Worker started for repo: $RepoRoot"
 
     while ($true) {
