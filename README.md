@@ -69,3 +69,14 @@ pytest tests/test_quality_gates.py -q
 ## Author
 
 Magne Dina Neves
+
+## Git identity (contributions)
+
+Commits must use your verified GitHub email to count on your profile:
+
+```bash
+git config user.name "Magne Dina Neves"
+git config user.email "magnedinanevesdina@gmail.com"
+```
+
+The Cursor auto-commit hook in `.cursor/hooks/` sets these automatically on Windows.
