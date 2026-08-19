@@ -1,0 +1,37 @@
+name: Sync profile streak badge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'profile-sync/README.md'
+      - '.github/workflows/sync-profile-streak-badge.yml'
+
+jobs:
+  update-profile-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push profile README when PAT is configured
+        env:
+          PROFILE_PAT: ${{ secrets.PROFILE_PAT }}
+        run: |
+          if [ -z "$PROFILE_PAT" ]; then
+            echo "PROFILE_PAT secret not set; skipping profile README sync."
+            exit 0
+          fi
+          if [ ! -f profile-sync/README.md ]; then
+            echo "profile-sync/README.md missing"
+            exit 1
+          fi
+          SHA=$(curl -s -H "Authorization: token $PROFILE_PAT" \
+            https://api.github.com/repos/KRYPTON0078/KRYPTON0078/contents/README.md \
+            | jq -r .sha)
+          CONTENT=$(base64 -w0 profile-sync/README.md)
+          curl -sf -X PUT \
+            -H "Authorization: token $PROFILE_PAT" \
+            -H "Content-Type: application/json" \
+            -d "{\"message\":\"Refresh stats badge cache to restore streak display.\",\"content\":\"$CONTENT\",\"sha\":\"$SHA\",\"committer\":{\"name\":\"Magne Dina Neves\",\"email\":\"magnedinanevesdina@gmail.com\"},\"author\":{\"name\":\"Magne Dina Neves\",\"email\":\"magnedinanevesdina@gmail.com\"}}" \
+            https://api.github.com/repos/KRYPTON0078/KRYPTON0078/contents/README.md

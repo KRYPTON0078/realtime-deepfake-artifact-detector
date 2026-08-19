@@ -64,6 +64,30 @@ try {
 
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Push succeeded to origin/main"
+            $stamp = Get-Date -Format "yyyyMMddHHmmss"
+            $profileCandidates = @(
+                (Join-Path (Split-Path $RepoRoot -Parent) "KRYPTON0078"),
+                "D:\\KRYPTON0078",
+                "D:\\GitHub\\KRYPTON0078"
+            )
+            foreach ($profileRoot in $profileCandidates) {
+                if (-not (Test-Path (Join-Path $profileRoot "README.md"))) { continue }
+                Write-Log "Refreshing profile streak badge in $profileRoot"
+                Push-Location $profileRoot
+                $readme = Get-Content "README.md" -Raw
+                $readme = $readme -replace 'v=\d+', "v=$stamp"
+                $readme = $readme -replace 'include_all_commits=false', 'include_all_commits=true'
+                $readme = $readme -replace 'count_private=false', 'count_private=true'
+                $readme = $readme -replace 'cache_seconds=1800', 'cache_seconds=60'
+                Set-Content "README.md" $readme -NoNewline
+                git add README.md 2>&1 | ForEach-Object { Write-Log $_ }
+                git commit -m "Refresh stats badge cache to restore streak display." 2>&1 | ForEach-Object { Write-Log $_ }
+                if ($LASTEXITCODE -eq 0) {
+                    git push origin main 2>&1 | ForEach-Object { Write-Log $_ }
+                }
+                Pop-Location
+                break
+            }
         } else {
             Write-Log "Push failed (exit $LASTEXITCODE). Changes remain committed locally."
         }
