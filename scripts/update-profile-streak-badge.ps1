@@ -1,23 +1,28 @@
-# One-time helper: refresh the streak badge cache on your GitHub profile README.
-# Run from a clone of https://github.com/KRYPTON0078/KRYPTON0078
+# Refresh GitHub profile streak badge (fixes cached "0" streak bar).
+# Run from repo root on your Windows machine (uses YOUR GitHub login, not cursor bot):
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-profile-streak-badge.ps1
 
+$ErrorActionPreference = "Stop"
 $stamp = Get-Date -Format "yyyyMMddHHmmss"
-$readme = Join-Path $PSScriptRoot "..\..\KRYPTON0078\README.md"
-if (-not (Test-Path $readme)) {
-    Write-Host "Clone KRYPTON0078/KRYPTON0078 next to this repo, then rerun."
-    exit 1
-}
+$work = Join-Path $env:TEMP "KRYPTON0078-profile-sync"
+$repo = "https://github.com/KRYPTON0078/KRYPTON0078.git"
 
-$content = Get-Content $readme -Raw
-$content = $content -replace 'v=\d+', "v=$stamp"
-$content = $content -replace 'include_all_commits=false', 'include_all_commits=true'
-$content = $content -replace 'count_private=false', 'count_private=true'
-$content = $content -replace 'cache_seconds=1800', 'cache_seconds=60'
-Set-Content $readme $content -NoNewline
+if (Test-Path $work) { Remove-Item -Recurse -Force $work }
+git clone $repo $work | Out-Host
+Set-Location $work
 
-Push-Location (Split-Path $readme)
+git config user.name "Magne Dina Neves"
+git config user.email "magnedinanevesdina@gmail.com"
+
+$readme = Get-Content "README.md" -Raw
+$readme = $readme -replace 'v=\d+', "v=$stamp"
+$readme = $readme -replace 'include_all_commits=false', 'include_all_commits=true'
+$readme = $readme -replace 'count_private=false', 'count_private=true'
+$readme = $readme -replace 'cache_seconds=1800', 'cache_seconds=60'
+$readme = $readme -replace 'cache_seconds=300', 'cache_seconds=60'
+Set-Content "README.md" $readme -NoNewline
+
 git add README.md
 git commit -m "Refresh stats badge cache to restore streak display."
 git push origin main
-Pop-Location
-Write-Host "Profile README pushed with cache bust v=$stamp"
+Write-Host "Profile README updated (cache bust v=$stamp). Hard-refresh https://github.com/KRYPTON0078"
