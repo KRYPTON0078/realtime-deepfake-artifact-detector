@@ -15,3 +15,4 @@ Tracks meaningful project activity for contribution continuity.
 | 2026-08-15 | Stream worker latency profiling |
 | 2026-08-16 | Quality-gates test sweep |
 | 2026-08-17 | README and docs polish |
+| 2026-08-20 | Detector runtime smoke checks |
