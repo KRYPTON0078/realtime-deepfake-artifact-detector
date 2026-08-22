@@ -1,6 +1,21 @@
 {
-  "repos": [
-    "github.com/KRYPTON0078/realtime-deepfake-artifact-detector",
-    "github.com/KRYPTON0078/KRYPTON0078"
+  "install": "bash .cursor/scripts/clone-all-repos.sh",
+  "repositoryDependencies": [
+    "github.com/KRYPTON0078/KRYPTON0078",
+    "github.com/KRYPTON0078/abva",
+    "github.com/KRYPTON0078/Agri-Link",
+    "github.com/KRYPTON0078/cofreseguro",
+    "github.com/KRYPTON0078/hes-agent-platform",
+    "github.com/KRYPTON0078/Jarvis",
+    "github.com/KRYPTON0078/Jarvis-AI",
+    "github.com/KRYPTON0078/Off-grid-Communication-System",
+    "github.com/KRYPTON0078/OPTIMIZED_PLFM_RADAR",
+    "github.com/KRYPTON0078/Physical-Smoke-Detector",
+    "github.com/KRYPTON0078/Python-Cloud-Keylogger-Educational-",
+    "github.com/KRYPTON0078/residential-esms-detectability",
+    "github.com/KRYPTON0078/ros-cyber",
+    "github.com/KRYPTON0078/RuView-Optimized",
+    "github.com/KRYPTON0078/SmartHome-CTF",
+    "github.com/KRYPTON0078/Smoking_Detection-Machine-Learning-Project"
   ]
 }
