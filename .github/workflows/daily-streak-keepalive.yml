@@ -1,0 +1,40 @@
+name: Daily contribution keep-alive
+
+on:
+  schedule:
+    # Run every day at 12:00 UTC
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Append today's keep-alive note if missing
+        env:
+          GIT_AUTHOR_NAME: Magne Dina Neves
+          GIT_AUTHOR_EMAIL: magnedinanevesdina@gmail.com
+          GIT_COMMITTER_NAME: Magne Dina Neves
+          GIT_COMMITTER_EMAIL: magnedinanevesdina@gmail.com
+        run: |
+          set -euo pipefail
+          TODAY=$(date -u +%Y-%m-%d)
+          mkdir -p .github
+          touch .github/activity-log.md
+          if grep -q "| $TODAY |" .github/activity-log.md; then
+            echo "Already logged $TODAY"
+            exit 0
+          fi
+          echo "| $TODAY | Scheduled keep-alive contribution |" >> .github/activity-log.md
+          git config user.name "Magne Dina Neves"
+          git config user.email "magnedinanevesdina@gmail.com"
+          git add .github/activity-log.md
+          git commit -m "Keep daily contribution streak active ($TODAY)."
+          git push origin main
