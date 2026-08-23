@@ -2,8 +2,9 @@ name: Daily contribution keep-alive
 
 on:
   schedule:
-    # Run every day at 12:00 UTC
-    - cron: "0 12 * * *"
+    # Run twice daily to avoid timezone streak gaps
+    - cron: "0 6 * * *"
+    - cron: "0 18 * * *"
   workflow_dispatch:
 
 permissions:
