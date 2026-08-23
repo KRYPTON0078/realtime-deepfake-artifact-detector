@@ -1,6 +1,5 @@
-# Refresh GitHub profile streak badge (fixes cached "0" streak bar).
-# Run from repo root on your Windows machine (uses YOUR GitHub login, not cursor bot):
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-profile-streak-badge.ps1
+# Refresh GitHub profile streak badge cache ONLY (keeps S rank + 13k commits).
+# Run from repo root: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-profile-streak-badge.ps1
 
 $ErrorActionPreference = "Stop"
 $stamp = Get-Date -Format "yyyyMMddHHmmss"
@@ -15,14 +14,12 @@ git config user.name "Magne Dina Neves"
 git config user.email "magnedinanevesdina@gmail.com"
 
 $readme = Get-Content "README.md" -Raw
+# Only bust cache timestamp — do NOT change include_all_commits/count_private (breaks rank/commits).
 $readme = $readme -replace 'v=\d+', "v=$stamp"
-$readme = $readme -replace 'include_all_commits=false', 'include_all_commits=true'
-$readme = $readme -replace 'count_private=false', 'count_private=true'
-$readme = $readme -replace 'cache_seconds=1800', 'cache_seconds=60'
-$readme = $readme -replace 'cache_seconds=300', 'cache_seconds=60'
+$readme = $readme -replace 'date_format=[^&]+&', ''
 Set-Content "README.md" $readme -NoNewline
 
 git add README.md
-git commit -m "Refresh stats badge cache to restore streak display."
+git commit -m "Refresh stats badge cache (restore S rank and streak)."
 git push origin main
-Write-Host "Profile README updated (cache bust v=$stamp). Hard-refresh https://github.com/KRYPTON0078"
+Write-Host "Done. Hard-refresh https://github.com/KRYPTON0078 (Ctrl+F5). Cache bust v=$stamp"
