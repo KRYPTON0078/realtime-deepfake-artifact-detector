@@ -1,10 +1,13 @@
 # 2-Minute Demo Script
 
+For a recorded mp4/link, see [`DEMO.md`](DEMO.md).
+
 ## Setup
 
 1. Start the app:
    ```bash
-   python app/server.py
+   ./scripts/demo_up.sh
+   # or: python app/server.py
    ```
 2. Open `http://127.0.0.1:5000`
 

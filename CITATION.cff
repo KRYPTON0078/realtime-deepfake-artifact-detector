@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "Real-Time Deepfake Artifact Detector"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Neves
+    given-names: Magne Dina
+    alias: KRYPTON0078
+    affiliation: University of Macau
+repository-code: "https://github.com/KRYPTON0078/realtime-deepfake-artifact-detector"
+url: "https://github.com/KRYPTON0078/realtime-deepfake-artifact-detector"
+abstract: >-
+  A research demo that scores face-swap style spatial artifacts in webcam,
+  phone-camera, and uploaded video using YuNet face detection, a MobileNetV2
+  classifier with a heuristic fallback, and hysteresis temporal smoothing.
+  It does not claim general detection of all modern generative video models.
+keywords:
+  - deepfake detection
+  - face-swap artifacts
+  - media forensics
+  - computer vision
+  - MobileNetV2
+  - YuNet
+  - trustworthy AI
+license: MIT
+version: 0.1.0
+date-released: "2026-09-08"

@@ -1,5 +1,7 @@
 # Scope and Limitations
 
+Longer method + eval writeup: [`TECH_REPORT.md`](TECH_REPORT.md). Demo video drop instructions: [`DEMO.md`](DEMO.md).
+
 ## Intended Attack Class
 
 This project targets **face-swap style spatial artifacts**, including:
@@ -42,6 +44,8 @@ python training/evaluate.py
 Face crops use the project detector with margin padding (`scripts/crop_faces_from_videos.py`) so train and inference share the same crop policy.
 
 Document the exact subset, split seed, compression level, and crop settings whenever you report results. The bundled synthetic demo dataset is for local plumbing only — a perfect synthetic val accuracy is not evidence of real-world deepfake detection quality.
+
+Checked-in `models/calibrated_thresholds.json` reports accuracy/F1/AUC = 1.0 on **n = 24 synthetic images**. Treat that JSON as a wiring check, not a benchmark. This tree does not include FaceForensics++ or Celeb-DF metrics.
 
 ## Evaluation Caveats
 
