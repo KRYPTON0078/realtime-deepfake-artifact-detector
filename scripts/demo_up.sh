@@ -23,16 +23,30 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -d .venv ]]; then
+ensure_venv() {
+  if [[ -x .venv/bin/python ]]; then
+    return 0
+  fi
   echo "[demo] creating virtualenv at .venv"
-  "$PYTHON" -m venv .venv
+  if "$PYTHON" -m venv .venv 2>/tmp/demo_venv.err; then
+    return 0
+  fi
+  echo "[demo] python -m venv failed (often missing ensurepip); trying virtualenv"
+  "$PYTHON" -m pip install -q virtualenv || "$PYTHON" -m pip install -q --user virtualenv
+  "$PYTHON" -m virtualenv .venv
+}
+
+ensure_venv || echo "[demo] continuing without .venv using ${PYTHON}" >&2
+
+if [[ -x .venv/bin/python ]]; then
+  PYEXE=".venv/bin/python"
+else
+  PYEXE="$PYTHON"
 fi
 
-# shellcheck disable=SC1091
-source .venv/bin/activate
-echo "[demo] installing requirements (quiet)"
-python -m pip install -q --upgrade pip
-python -m pip install -q -r requirements.txt
+echo "[demo] installing requirements with ${PYEXE} (quiet)"
+"$PYEXE" -m pip install -q --upgrade pip
+"$PYEXE" -m pip install -q -r requirements.txt
 
 export APP_HOST="$HOST"
 export APP_PORT="$PORT"
@@ -41,10 +55,10 @@ export APP_DEBUG="${APP_DEBUG:-0}"
 echo "[demo] dashboard: http://127.0.0.1:${PORT}"
 echo "[demo] health:    GET http://127.0.0.1:${PORT}/health"
 echo "[demo] CNN mode requires models/artifact_detector.pt (optional; heuristic mode is the default)"
-echo "[demo] optional CNN path: python scripts/generate_demo_dataset.py && python training/train.py"
+echo "[demo] optional CNN path: ${PYEXE} scripts/generate_demo_dataset.py && ${PYEXE} training/train.py"
 
 if [[ "$SMOKE" -eq 1 ]]; then
-  python app/server.py &
+  "$PYEXE" app/server.py &
   server_pid=$!
   cleanup() {
     kill "$server_pid" 2>/dev/null || true
@@ -54,7 +68,7 @@ if [[ "$SMOKE" -eq 1 ]]; then
 
   echo "[demo] waiting for /health (pid ${server_pid})"
   for _ in $(seq 1 90); do
-    if curl -fsS "http://127.0.0.1:${PORT}/health"; then
+    if curl -fsS "http://127.0.0.1:${PORT}/health" 2>/dev/null; then
       echo
       echo "[demo] smoke check passed"
       exit 0
@@ -65,4 +79,4 @@ if [[ "$SMOKE" -eq 1 ]]; then
   exit 1
 fi
 
-exec python app/server.py
+exec "$PYEXE" app/server.py
